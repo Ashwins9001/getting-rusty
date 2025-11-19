@@ -1,0 +1,2 @@
+## Overview
+Just a fun repo where I'll be learning to do some concurrent programming using Rust. Building up my knowledge of it to eventually apply it to some realtime tasks to process chunks in parallel.
