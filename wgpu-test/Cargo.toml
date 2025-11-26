@@ -1,0 +1,9 @@
+[package]
+name = "wgpu-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wgpu = "0.16"        # GPU abstraction library
+winit = "0.28"       # Window creation and event loop
+pollster = "0.3"     # Simple executor for async functions
