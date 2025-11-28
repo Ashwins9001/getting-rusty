@@ -114,12 +114,14 @@ impl State {
         });
 
         // ----- Camera (fixed) -----
+        //define view matrix and starting position
         let view = Mat4::look_at_rh(
             Vec3::new(3.0, 3.0, 3.0), // camera position
             Vec3::ZERO,               // looks at origin
             Vec3::Y,                  // up direction
         );
 
+        //define projection matrix and starting field of view, along with near and far-clipping limits to encapsulate frustum 
         let proj = Mat4::perspective_rh_gl(
             45f32.to_radians(),
             config.width as f32 / config.height as f32,
@@ -127,10 +129,12 @@ impl State {
             100.0,
         );
 
+        //define camera matrix as projection * view matrices and convert it to 2D array compatible with GPU func
         let camera_uniform = CameraUniform {
             view_proj: (proj * view).to_cols_array_2d(),
         };
 
+        //create camera and model vertex buffers that will contain each vertex as [[x, y, z],[r,g,b]]
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
             contents: bytemuck::bytes_of(&camera_uniform),
@@ -148,13 +152,14 @@ impl State {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
+        //define bindings so GPU knows how to access each vertex correctly
         // ----- Bind Group Layout -----
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: None,
             entries: &[
                 // camera
                 wgpu::BindGroupLayoutEntry {
-                    binding: 0,
+                    binding: 0, //camera information for vertex shader
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
@@ -165,7 +170,7 @@ impl State {
                 },
                 // model
                 wgpu::BindGroupLayoutEntry {
-                    binding: 1,
+                    binding: 1, //model information for vertex shader
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
@@ -193,6 +198,7 @@ impl State {
         });
 
         // ----- Shader -----
+        //reference the shader module
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
         // ----- Pipeline -----
@@ -205,11 +211,11 @@ impl State {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
             layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
+            vertex: wgpu::VertexState { 
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: 6 * 4,
+                    array_stride: 6 * 4, //each vertex has 6 floating point values at 4 bytes each, hence each is 6*4=24 bytes 
                     step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &[
                         wgpu::VertexAttribute {
@@ -219,7 +225,7 @@ impl State {
                         },
                         wgpu::VertexAttribute {
                             shader_location: 1,
-                            offset: 12,
+                            offset: 12, //recall the last three values are color, reference these directly in GPU to proc together by offset 12 (3 floats at 4 bytes each = 4*3=12 byte offset)
                             format: wgpu::VertexFormat::Float32x3,
                         },
                     ],
@@ -262,23 +268,23 @@ impl State {
     fn update(&mut self) {
         // Rotate the cube every frame
         self.rotation += 0.01;
-        let rot = Mat4::from_rotation_y(self.rotation) * Mat4::from_rotation_x(self.rotation * 0.5);
+        let rot = Mat4::from_rotation_y(self.rotation) * Mat4::from_rotation_x(self.rotation * 0.5); //define rotation matrix along y and x-axes with fom_rotation_y/x func
 
         let model = ModelUniform {
-            model: rot.to_cols_array_2d(),
+            model: rot.to_cols_array_2d(), //convert to 2D array again for GPU to understand
         };
 
-        self.queue.write_buffer(&self.model_buffer, 0, bytemuck::bytes_of(&model));
+        self.queue.write_buffer(&self.model_buffer, 0, bytemuck::bytes_of(&model)); //load the model information to buffer after rotation changes applied
     }
 
     fn render(&mut self) {
         let frame = self.surface.get_current_texture().unwrap();
-        let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default()); //get current texture and display it (vertices proc by shader)
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None }); //write GPU commands and encode them 
 
         {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor { //render pass to black out view
                 label: None,
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -291,14 +297,14 @@ impl State {
                 depth_stencil_attachment: None,
             });
 
-            pass.set_pipeline(&self.render_pipeline);
+            pass.set_pipeline(&self.render_pipeline); //set up the pipeline and bindings, then fetch vertex information from buffer after shader has applied position and color transformations
             pass.set_bind_group(0, &self.bind_group, &[]);
             pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            pass.draw_indexed(0..self.num_indices, 0, 0..1); //draw command 
         }
 
-        self.queue.submit(Some(encoder.finish()));
+        self.queue.submit(Some(encoder.finish())); //send to encoder and call on GPU to present it
         frame.present();
     }
 }
