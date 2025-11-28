@@ -1,0 +1,11 @@
+[package]
+name = "rotating-cube"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wgpu = "0.16"
+winit = "0.28"
+bytemuck = { version = "1.14", features = ["derive"] } # enable derive macros
+glam = "0.25"
+pollster = "0.3"
