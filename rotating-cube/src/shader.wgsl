@@ -14,14 +14,14 @@ var<uniform> model: Model;
 
 // 3. Vertex input
 struct VertexInput {
-    @location(0) position: vec3<f32> // vertex position
-    @location(1) color: vec3<f32>    // vertex color
+    @location(0) position: vec3<f32>, // vertex position
+    @location(1) color: vec3<f32>,    // vertex color
 };
 
 // 4. Vertex output to fragment shader
 struct VertexOutput {
-    @builtin(position) clip_position: vec4<f32> // where GPU draws vertex in clip-space
-    @location(0) frag_color: vec3<f32>         // pass color to fragment shader
+    @builtin(position) clip_position: vec4<f32>, // where GPU draws vertex in clip-space
+    @location(0) frag_color: vec3<f32>,          // pass color to fragment shader
 };
 
 // 5. Vertex shader
